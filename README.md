@@ -4,9 +4,10 @@
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![CI: all green](https://img.shields.io/badge/CI-all%20green-brightgreen.svg)](https://github.com/theraihanrakibb?tab=repositories)
 
-A curated set of **five small, production-quality AI-infrastructure projects**, built to demonstrate the breadth of
+A curated set of **ten small, production-quality AI-infrastructure projects**, built to demonstrate the breadth of
 skills an AI platform / infrastructure engineer needs: **model serving, GPU observability, distributed-training
-orchestration, MLOps artifact governance, and LLM API gatewaying**.
+orchestration, MLOps artifact governance, LLM API gatewaying, KV-cache / prefill-decode simulation, LLM benchmarking,
+low-precision quantization, LLMOps tracing, and retrieval-augmented generation**.
 
 Every project is:
 
@@ -25,8 +26,13 @@ Every project is:
 | [gpu-exporter](https://github.com/theraihanrakibb/gpu-exporter) | **Observability** | Prometheus exporter for NVIDIA GPU metrics (parses `nvidia-smi`), graceful degradation, plus a Grafana dashboard. | prometheus-client · Grafana | 14 passed |
 | [train-launcher](https://github.com/theraihanrakibb/train-launcher) | **Training Orchestration** | CLI to launch and supervise multi-node PyTorch training with fault tolerance and automatic retry. | argparse · pydantic · SSH | 16 passed |
 | [model-registry](https://github.com/theraihanrakibb/model-registry) | **MLOps** | Content-addressed model/dataset registry (mini-MLflow) with a CLI and REST API, versioning, and aliases. | FastAPI · SQLite · SHA-256 | 20 passed |
+| [kv-cache-sim](https://github.com/theraihanrakibb/kv-cache-sim) | **Inference Efficiency** | Simulator for KV-cache eviction policies and prefill/decode disaggregation, with TTFT/TPOT metrics. | typer · numpy | 20 passed |
+| [llm-bench](https://github.com/theraihanrakibb/llm-bench) | **Benchmarking** | LLM inference benchmark + eval harness measuring TTFT, TPOT, throughput, and a cost model. | typer · numpy | 16 passed |
+| [quant-playground](https://github.com/theraihanrakibb/quant-playground) | **Low Precision** | FP8/FP4/INT8/INT4 bit-packing and a tiny numpy MLP to show quantization error vs. speed. | numpy | 34 passed |
+| [llmoops-trace](https://github.com/theraihanrakibb/llmoops-trace) | **Observability** | OpenTelemetry-based LLM tracing collector with a FastAPI app and Grafana dashboard. | FastAPI · OTel · Grafana | 11 passed |
+| [rag-pipeline](https://github.com/theraihanrakibb/rag-pipeline) | **Retrieval (RAG)** | Dependency-light RAG toolkit: ingest → chunk → embed → ANN search → rerank, runs fully offline. | typer · numpy · FastAPI | 35 passed |
 
-> Combined: **80 automated tests passing**, 5 Dockerized services, 5 CI pipelines.
+> Combined: **196 automated tests passing**, 10 Dockerized services, 10 CI pipelines.
 
 ---
 
@@ -45,10 +51,19 @@ flowchart LR
     TL --> MR
     Serve[Inference Service] --> MS[mini-serve]
     MS --> MR
+    Bench[Benchmark Harness] --> LB[llm-bench]
+    LB --> KVS[kv-cache-sim]
+    KVS --> MS
+    QP[quant-playground] --> MS
+    Trace[LLM Calls] --> OT[llmoops-trace]
+    OT --> Prom
+    RAG[Documents] --> RP[rag-pipeline]
+    RP --> GW
 ```
 
-The five form a coherent substrate for running ML reliably: **train** models and **register** them, **serve** them
-with batching/streaming, **expose** GPUs to monitoring, and **gate** LLM traffic with cost and rate controls.
+The projects form a coherent substrate for running ML reliably: **train** models and **register** them, **serve** them
+with batching/streaming, **expose** GPUs to monitoring, **gate** LLM traffic with cost and rate controls, and **measure**
+serving behaviour with the benchmark, KV-cache, quantization, tracing, and RAG toolkits.
 
 ---
 
@@ -84,6 +99,26 @@ python -m pip install -r requirements.txt && python -m train_launcher launch --s
 # Model registry
 git clone https://github.com/theraihanrakibb/model-registry && cd model-registry
 python -m pip install -r requirements.txt && python -m uvicorn model_registry.api:app --port 8001
+
+# KV-cache / PD-disaggregation simulator
+git clone https://github.com/theraihanrakibb/kv-cache-sim && cd kv-cache-sim
+python -m pip install -e . && python -m kv_cache_sim --help
+
+# LLM benchmark + eval harness
+git clone https://github.com/theraihanrakibb/llm-bench && cd llm-bench
+python -m pip install -e . && python -m llm_bench --help
+
+# Quantization playground
+git clone https://github.com/theraihanrakibb/quant-playground && cd quant-playground
+python -m pip install -e . && python -m quant_playground --help
+
+# LLMOps tracing
+git clone https://github.com/theraihanrakibb/llmoops-trace && cd llmoops-trace
+python -m pip install -e .[otlp] && python -m llmoops_trace --help
+
+# RAG pipeline
+git clone https://github.com/theraihanrakibb/rag-pipeline && cd rag-pipeline
+python -m pip install -e .[api] && rag-pipeline index "docs/*.md"
 ```
 
 ---
@@ -97,6 +132,11 @@ Each project targets a concrete, recurring problem in ML platforms:
 - **gpu-exporter** — turning the scarcest, most expensive resource (GPUs) into measurable, alertable signals.
 - **train-launcher** — automatic recovery from node failures so long training jobs don't lose compute.
 - **model-registry** — reproducible, deduped model/dataset versioning with safe alias-based rollbacks.
+- **kv-cache-sim** — makes the memory/latency trade-offs of prefix caching and PD-disaggregation explicit and measurable.
+- **llm-bench** — turns "is this model fast enough / cheap enough?" into reproducible TTFT/TPOT/cost numbers.
+- **quant-playground** — demystifies FP8/FP4/INT4 so you can reason about the accuracy-vs-throughput frontier.
+- **llmoops-trace** — gives every LLM call a trace so latency and cost are attributable, not a black box.
+- **rag-pipeline** — a transparent, testable retrieval loop you can benchmark and debug before wiring in a vector DB.
 
 ---
 
